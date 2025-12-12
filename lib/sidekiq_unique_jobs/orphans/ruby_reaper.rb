@@ -221,7 +221,7 @@ module SidekiqUniqueJobs
               payload = safe_load_json(item[PAYLOAD])
 
               return true if match?(digest, payload[LOCK_DIGEST])
-              return true if considered_active?(payload[CREATED_AT])
+              return true if considered_active?(time_from_payload_timestamp(payload[CREATED_AT]).to_f)
             end
           end
 
@@ -237,6 +237,15 @@ module SidekiqUniqueJobs
 
       def considered_active?(time_f)
         max_score < time_f
+      end
+
+      def time_from_payload_timestamp(timestamp)
+        if timestamp.is_a?(Float)
+          # < Sidekiq 8, timestamps were stored as fractional seconds since the epoch
+          Time.at(timestamp).utc
+        else
+          Time.at(timestamp / 1000, timestamp % 1000, :millisecond)
+        end
       end
 
       #
